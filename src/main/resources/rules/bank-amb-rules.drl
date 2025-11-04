@@ -1,0 +1,250 @@
+package rules;
+
+import com.bank.amb.model.Account;
+import com.bank.amb.model.ProbableDefaulter;
+import com.bank.amb.model.ActualDefaulter;
+import com.bank.amb.model.Charge;
+import com.bank.amb.model.ExecutionContext;
+
+global java.util.List probableDefaultersList;
+global java.util.List actualDefaultersList;
+global java.util.List chargesList;
+
+// ============================================================================
+// RULE 1A: Probable Defaulter - Was Actual Defaulter Last Month (NO SMS)
+// ============================================================================
+rule "R1A_ProbableDefaulter_WasActualPrevMonth_NoSMS"
+    salience 110
+    when
+        $context : ExecutionContext( checkDay == 25 )
+        $account : Account(
+            $accountId : accountId,
+            $accountName : accountName,
+            $currentMonth : currentMonth,
+            $amb : calculateAMB(1, 25),
+            calculateAMB(1, 25) < $context.minBalance
+        )
+        ActualDefaulter(
+            accountId == $accountId,
+            month == ($currentMonth - 1)
+        )
+        not ProbableDefaulter(
+            accountId == $accountId,
+            month == $currentMonth
+        )
+    then
+        ProbableDefaulter pd = new ProbableDefaulter();
+        pd.setAccountId($accountId);
+        pd.setMonth($currentMonth);
+        pd.setAmb($amb);
+        pd.setSmsSent(false);
+        pd.setReason("Was actual defaulter in Month " + ($currentMonth - 1) + " - NO SMS");
+
+        insert(pd);
+        probableDefaultersList.add(pd);
+
+        System.out.println("═══════════════════════════════════════════════════════════");
+        System.out.println("[RULE 1A] PROBABLE DEFAULTER IDENTIFIED");
+        System.out.println("  Account ID: " + $accountId);
+        System.out.println("  Account Name: " + $accountName);
+        System.out.println("  Month: " + $currentMonth);
+        System.out.println("  AMB (Day 1-25): ₹" + String.format("%.2f", $amb));
+        System.out.println("  SMS Status: NOT SENT (was actual defaulter in Month " + ($currentMonth - 1) + ")");
+        System.out.println("  Reason: Continuing defaulter - SMS already sent earlier");
+        System.out.println("═══════════════════════════════════════════════════════════");
+end
+
+// ============================================================================
+// RULE 1B: Probable Defaulter - New (SEND SMS)
+// ============================================================================
+rule "R1B_ProbableDefaulter_New_SendSMS"
+    salience 100
+    when
+        $context : ExecutionContext( checkDay == 25 )
+        $account : Account(
+            $accountId : accountId,
+            $accountName : accountName,
+            $currentMonth : currentMonth,
+            $amb : calculateAMB(1, 25),
+            calculateAMB(1, 25) < $context.minBalance
+        )
+        not ActualDefaulter(
+            accountId == $accountId,
+            month == ($currentMonth - 1)
+        )
+        not ProbableDefaulter(
+            accountId == $accountId,
+            month == $currentMonth
+        )
+    then
+        ProbableDefaulter pd = new ProbableDefaulter();
+        pd.setAccountId($accountId);
+        pd.setMonth($currentMonth);
+        pd.setAmb($amb);
+        pd.setSmsSent(true);
+        pd.setReason("New probable defaulter - SMS sent");
+
+        insert(pd);
+        probableDefaultersList.add(pd);
+
+        System.out.println("═══════════════════════════════════════════════════════════");
+        System.out.println("[RULE 1B] NEW PROBABLE DEFAULTER IDENTIFIED");
+        System.out.println("  Account ID: " + $accountId);
+        System.out.println("  Account Name: " + $accountName);
+        System.out.println("  Month: " + $currentMonth);
+        System.out.println("  AMB (Day 1-25): ₹" + String.format("%.2f", $amb));
+        System.out.println("  Required Balance: ₹" + String.format("%.2f", $context.getMinBalance()));
+        System.out.println("  Deficit: ₹" + String.format("%.2f", ($context.getMinBalance() - $amb)));
+        System.out.println("  ✉️  SMS: SENT");
+        System.out.println("  Message: Your average monthly balance is below minimum");
+        System.out.println("           required. Please maintain sufficient balance or");
+        System.out.println("           charges will be deducted.");
+        System.out.println("═══════════════════════════════════════════════════════════");
+end
+
+// ============================================================================
+// RULE 1C: Balance Maintained
+// ============================================================================
+rule "R1C_BalanceMaintained"
+    salience 90
+    when
+        $context : ExecutionContext( checkDay == 25 )
+        $account : Account(
+            $accountId : accountId,
+            $accountName : accountName,
+            calculateAMB(1, 25) >= $context.minBalance
+        )
+    then
+        System.out.println("[RULE 1C] ✓ Balance Maintained: " + $accountId + " (" + $accountName + ")");
+end
+
+// ============================================================================
+// RULE 2: Actual Defaulter Check
+// ============================================================================
+rule "R2_ActualDefaulter"
+    salience 80
+    when
+        $context : ExecutionContext( checkDay == 3 )
+        $account : Account(
+            $accountId : accountId,
+            $accountName : accountName,
+            $currentMonth : currentMonth,
+            $amb : calculateAMB(1, 30),
+            calculateAMB(1, 30) < $context.minBalance
+        )
+        $pd : ProbableDefaulter(
+            accountId == $accountId,
+            month == ($currentMonth - 1)
+        )
+        not ActualDefaulter(
+            accountId == $accountId,
+            month == ($currentMonth - 1)
+        )
+    then
+        ActualDefaulter ad = new ActualDefaulter();
+        ad.setAccountId($accountId);
+        ad.setMonth($currentMonth - 1);
+        ad.setAmb($amb);
+        ad.setShortfall($context.getMinBalance() - $amb);
+        ad.setStatus("Confirmed actual defaulter for Month " + ($currentMonth - 1));
+
+        insert(ad);
+        actualDefaultersList.add(ad);
+
+        System.out.println("╔═══════════════════════════════════════════════════════════╗");
+        System.out.println("║ [RULE 2] ACTUAL DEFAULTER CONFIRMED                      ║");
+        System.out.println("╚═══════════════════════════════════════════════════════════╝");
+        System.out.println("  Account ID: " + $accountId);
+        System.out.println("  Account Name: " + $accountName);
+        System.out.println("  Defaulted Month: " + ad.getMonth());
+        System.out.println("  Full Month AMB: ₹" + String.format("%.2f", $amb));
+        System.out.println("  Required Balance: ₹" + String.format("%.2f", $context.getMinBalance()));
+        System.out.println("  Shortfall: ₹" + String.format("%.2f", ad.getShortfall()));
+        System.out.println("  Status: " + ad.getStatus());
+        System.out.println("╚═══════════════════════════════════════════════════════════╝");
+end
+
+// ============================================================================
+// RULE 3: Charge Calculation (Separate charges per month, then sum)
+// ============================================================================
+rule "R3_ChargeCalculation"
+    salience 70
+    when
+        $context : ExecutionContext( checkDay == 3 )
+        $account : Account(
+            $accountId : accountId,
+            $accountName : accountName,
+            $currentMonth : currentMonth
+        )
+        $ad1 : ActualDefaulter(
+            accountId == $accountId,
+            month == ($currentMonth - 2),
+            $shortfall1 : shortfall
+        )
+        $ad2 : ActualDefaulter(
+            accountId == $accountId,
+            month == ($currentMonth - 1),
+            $shortfall2 : shortfall
+        )
+        not Charge(
+            accountId == $accountId,
+            chargedInMonth == ($currentMonth - 1) || chargedInMonth == ($currentMonth - 2)
+        )
+    then
+        // Calculate charge for Month 1
+        double baseCharge1 = Math.min($shortfall1 * 0.06, 500.0);
+        double gst1 = baseCharge1 * 0.18;
+        double totalCharge1 = baseCharge1 + gst1;
+
+        // Calculate charge for Month 2
+        double baseCharge2 = Math.min($shortfall2 * 0.06, 500.0);
+        double gst2 = baseCharge2 * 0.18;
+        double totalCharge2 = baseCharge2 + gst2;
+
+        // Total
+        double totalShortfall = $shortfall1 + $shortfall2;
+        double totalBaseCharge = baseCharge1 + baseCharge2;
+        double totalGST = gst1 + gst2;
+        double grandTotal = totalCharge1 + totalCharge2;
+
+        Charge charge = new Charge();
+        charge.setAccountId($accountId);
+        charge.setMonth1($currentMonth - 2);
+        charge.setMonth2($currentMonth - 1);
+        charge.setShortfall1($shortfall1);
+        charge.setShortfall2($shortfall2);
+        charge.setTotalShortfall(totalShortfall);
+        charge.setBaseCharge(totalBaseCharge);
+        charge.setGstAmount(totalGST);
+        charge.setTotalCharge(grandTotal);
+        charge.setChargedInMonth($currentMonth);
+        charge.setReason("Charged for 2-month consecutive defaults");
+
+        insert(charge);
+        chargesList.add(charge);
+
+        System.out.println("\n");
+        System.out.println("╔═══════════════════════════════════════════════════════════╗");
+        System.out.println("║                  💰 CHARGE APPLIED 💰                     ║");
+        System.out.println("╚═══════════════════════════════════════════════════════════╝");
+        System.out.println("║ Account Details:                                          ║");
+        System.out.println("║   Account ID: " + String.format("%-44s", $accountId) + "║");
+        System.out.println("║   Account Name: " + String.format("%-42s", $accountName) + "║");
+        System.out.println("║   Charged On: Month " + String.format("%-40d", $currentMonth) + "║");
+        System.out.println("╠═══════════════════════════════════════════════════════════╣");
+        System.out.println("║ Month " + String.format("%-2d", charge.getMonth1()) + " Charges:                                        ║");
+        System.out.println("║   Shortfall: ₹" + String.format("%,-10.2f", $shortfall1) + "                              ║");
+        System.out.println("║   Base Charge (6%): ₹" + String.format("%,-10.2f", baseCharge1) + " (capped at ₹500)  ║");
+        System.out.println("║   GST (18%): ₹" + String.format("%,-10.2f", gst1) + "                              ║");
+        System.out.println("║   Subtotal: ₹" + String.format("%,-10.2f", totalCharge1) + "                               ║");
+        System.out.println("╠═══════════════════════════════════════════════════════════╣");
+        System.out.println("║ Month " + String.format("%-2d", charge.getMonth2()) + " Charges:                                        ║");
+        System.out.println("║   Shortfall: ₹" + String.format("%,-10.2f", $shortfall2) + "                              ║");
+        System.out.println("║   Base Charge (6%): ₹" + String.format("%,-10.2f", baseCharge2) + " (capped at ₹500)  ║");
+        System.out.println("║   GST (18%): ₹" + String.format("%,-10.2f", gst2) + "                              ║");
+        System.out.println("║   Subtotal: ₹" + String.format("%,-10.2f", totalCharge2) + "                               ║");
+        System.out.println("╠═══════════════════════════════════════════════════════════╣");
+        System.out.println("║ TOTAL CHARGE: ₹" + String.format("%,-10.2f", grandTotal) + "                             ║");
+        System.out.println("╚═══════════════════════════════════════════════════════════╝");
+        System.out.println("\n");
+end
