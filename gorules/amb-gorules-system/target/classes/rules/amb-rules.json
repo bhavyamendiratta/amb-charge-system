@@ -1,0 +1,160 @@
+{
+  "name": "AMB Non-Maintenance Charge Rules",
+  "description": "Average Monthly Balance charge calculation rules for bank accounts",
+  "version": "1.0.0",
+  "hitPolicy": "first",
+  "inputs": [
+    {
+      "id": "checkDay",
+      "name": "Check Day",
+      "type": "number",
+      "field": "context.checkDay"
+    },
+    {
+      "id": "amb",
+      "name": "Average Monthly Balance",
+      "type": "number",
+      "field": "account.amb"
+    },
+    {
+      "id": "minBalance",
+      "name": "Minimum Required Balance",
+      "type": "number",
+      "field": "context.minBalance"
+    },
+    {
+      "id": "wasActualLastMonth",
+      "name": "Was Actual Defaulter Last Month",
+      "type": "boolean",
+      "field": "flags.wasActualLastMonth"
+    },
+    {
+      "id": "wasProbableLastMonth",
+      "name": "Was Probable Defaulter Last Month",
+      "type": "boolean",
+      "field": "flags.wasProbableLastMonth"
+    },
+    {
+      "id": "hasConsecutiveDefaults",
+      "name": "Has Two Consecutive Defaults",
+      "type": "boolean",
+      "field": "flags.hasConsecutiveDefaults"
+    },
+    {
+      "id": "alreadyCharged",
+      "name": "Already Charged For These Months",
+      "type": "boolean",
+      "field": "flags.alreadyCharged"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "action",
+      "name": "Action",
+      "type": "string",
+      "field": "result.action"
+    },
+    {
+      "id": "sendSMS",
+      "name": "Send SMS",
+      "type": "boolean",
+      "field": "result.sendSMS"
+    },
+    {
+      "id": "calculateCharge",
+      "name": "Calculate Charge",
+      "type": "boolean",
+      "field": "result.calculateCharge"
+    },
+    {
+      "id": "reason",
+      "name": "Reason",
+      "type": "string",
+      "field": "result.reason"
+    }
+  ],
+  "rules": [
+    {
+      "id": "rule_1a",
+      "description": "Probable Defaulter - Was Actual Last Month (No SMS)",
+      "conditions": {
+        "checkDay": 25,
+        "amb": "< minBalance",
+        "wasActualLastMonth": true
+      },
+      "outputs": {
+        "action": "PROBABLE_DEFAULTER",
+        "sendSMS": false,
+        "calculateCharge": false,
+        "reason": "Continuing defaulter - SMS already sent"
+      }
+    },
+    {
+      "id": "rule_1b",
+      "description": "Probable Defaulter - New (Send SMS)",
+      "conditions": {
+        "checkDay": 25,
+        "amb": "< minBalance",
+        "wasActualLastMonth": false
+      },
+      "outputs": {
+        "action": "PROBABLE_DEFAULTER",
+        "sendSMS": true,
+        "calculateCharge": false,
+        "reason": "New probable defaulter - SMS sent"
+      }
+    },
+    {
+      "id": "rule_1c",
+      "description": "Balance Maintained",
+      "conditions": {
+        "checkDay": 25,
+        "amb": ">= minBalance"
+      },
+      "outputs": {
+        "action": "BALANCE_MAINTAINED",
+        "sendSMS": false,
+        "calculateCharge": false,
+        "reason": "Balance maintained above minimum"
+      }
+    },
+    {
+      "id": "rule_2",
+      "description": "Confirm Actual Defaulter",
+      "conditions": {
+        "checkDay": 3,
+        "amb": "< minBalance",
+        "wasProbableLastMonth": true
+      },
+      "outputs": {
+        "action": "ACTUAL_DEFAULTER",
+        "sendSMS": false,
+        "calculateCharge": false,
+        "reason": "Confirmed actual defaulter"
+      }
+    },
+    {
+      "id": "rule_3",
+      "description": "Apply Charge for Consecutive Defaults",
+      "conditions": {
+        "checkDay": 3,
+        "hasConsecutiveDefaults": true,
+        "alreadyCharged": false
+      },
+      "outputs": {
+        "action": "APPLY_CHARGE",
+        "sendSMS": false,
+        "calculateCharge": true,
+        "reason": "Charged for 2-month consecutive defaults"
+      }
+    }
+  ],
+  "chargeCalculation": {
+    "formula": "min(shortfall * 0.06, 500) + min(shortfall * 0.06, 500) * 0.18",
+    "components": {
+      "baseChargeRate": 0.06,
+      "baseChargeCap": 500,
+      "gstRate": 0.18
+    }
+  }
+}
