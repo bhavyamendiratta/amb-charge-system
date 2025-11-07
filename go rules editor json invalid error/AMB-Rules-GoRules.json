@@ -1,0 +1,322 @@
+{
+  "contentType": "application/vnd.gorules.decision",
+  "nodes": [
+    {
+      "id": "input-node-1",
+      "type": "inputNode",
+      "position": {
+        "x": 50,
+        "y": 150
+      },
+      "content": {
+        "fields": [
+          {
+            "field": "accountId",
+            "name": "Account ID",
+            "dataType": "string",
+            "description": "Unique identifier for the account"
+          },
+          {
+            "field": "accountType",
+            "name": "Account Type",
+            "dataType": "string",
+            "description": "Type of account (SAVINGS_REGULAR, SAVINGS_SENIOR, etc.)"
+          },
+          {
+            "field": "amb",
+            "name": "Average Monthly Balance",
+            "dataType": "number",
+            "description": "Current month's average balance"
+          },
+          {
+            "field": "accountStatus",
+            "name": "Account Status",
+            "dataType": "string",
+            "description": "Status of account (ACTIVE, CLOSED, etc.)"
+          },
+          {
+            "field": "wasChargedLastMonth",
+            "name": "Was Charged Last Month",
+            "dataType": "boolean",
+            "description": "Whether AMB charge was applied in previous month"
+          },
+          {
+            "field": "wasChargedThisMonth",
+            "name": "Was Charged This Month",
+            "dataType": "boolean",
+            "description": "Whether AMB charge already applied this month"
+          }
+        ]
+      }
+    },
+    {
+      "id": "decision-table-1",
+      "name": "AMB Charge Decision",
+      "type": "decisionTableNode",
+      "position": {
+        "x": 400,
+        "y": 150
+      },
+      "content": {
+        "hitPolicy": "first",
+        "inputs": [
+          {
+            "id": "input-1",
+            "field": "accountType",
+            "name": "Account Type",
+            "dataType": "string"
+          },
+          {
+            "id": "input-2",
+            "field": "accountStatus",
+            "name": "Status",
+            "dataType": "string"
+          },
+          {
+            "id": "input-3",
+            "field": "amb",
+            "name": "AMB",
+            "dataType": "number"
+          },
+          {
+            "id": "input-4",
+            "field": "wasChargedLastMonth",
+            "name": "Charged Last Month?",
+            "dataType": "boolean"
+          },
+          {
+            "id": "input-5",
+            "field": "wasChargedThisMonth",
+            "name": "Charged This Month?",
+            "dataType": "boolean"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "output-1",
+            "field": "shouldCharge",
+            "name": "Should Charge",
+            "dataType": "boolean"
+          },
+          {
+            "id": "output-2",
+            "field": "chargeAmount",
+            "name": "Charge Amount",
+            "dataType": "number"
+          },
+          {
+            "id": "output-3",
+            "field": "chargeReason",
+            "name": "Reason",
+            "dataType": "string"
+          },
+          {
+            "id": "output-4",
+            "field": "ruleName",
+            "name": "Rule Applied",
+            "dataType": "string"
+          }
+        ],
+        "rules": [
+          {
+            "id": "rule-1",
+            "_description": "Rule 1: SAVINGS_REGULAR - First Month Violation",
+            "input": {
+              "accountType": "\"SAVINGS_REGULAR\"",
+              "accountStatus": "\"ACTIVE\"",
+              "amb": "< 25000",
+              "wasChargedLastMonth": "false",
+              "wasChargedThisMonth": "false"
+            },
+            "output": {
+              "shouldCharge": "true",
+              "chargeAmount": "500",
+              "chargeReason": "\"AMB below threshold (25000) - First violation\"",
+              "ruleName": "\"SAVINGS_REGULAR_FIRST_VIOLATION\""
+            }
+          },
+          {
+            "id": "rule-2",
+            "_description": "Rule 2: SAVINGS_REGULAR - Consecutive Month Violation",
+            "input": {
+              "accountType": "\"SAVINGS_REGULAR\"",
+              "accountStatus": "\"ACTIVE\"",
+              "amb": "< 25000",
+              "wasChargedLastMonth": "true",
+              "wasChargedThisMonth": "false"
+            },
+            "output": {
+              "shouldCharge": "true",
+              "chargeAmount": "500",
+              "chargeReason": "\"AMB below threshold (25000) - Consecutive violation\"",
+              "ruleName": "\"SAVINGS_REGULAR_CONSECUTIVE_VIOLATION\""
+            }
+          },
+          {
+            "id": "rule-3",
+            "_description": "Rule 3: SAVINGS_REGULAR - Already Charged This Month",
+            "input": {
+              "accountType": "\"SAVINGS_REGULAR\"",
+              "accountStatus": "\"ACTIVE\"",
+              "amb": "< 25000",
+              "wasChargedLastMonth": "-",
+              "wasChargedThisMonth": "true"
+            },
+            "output": {
+              "shouldCharge": "false",
+              "chargeAmount": "0",
+              "chargeReason": "\"Already charged this month - Duplicate prevention\"",
+              "ruleName": "\"DUPLICATE_CHARGE_PREVENTION\""
+            }
+          },
+          {
+            "id": "rule-4",
+            "_description": "Rule 4: SAVINGS_REGULAR - Meets Threshold",
+            "input": {
+              "accountType": "\"SAVINGS_REGULAR\"",
+              "accountStatus": "\"ACTIVE\"",
+              "amb": ">= 25000",
+              "wasChargedLastMonth": "-",
+              "wasChargedThisMonth": "-"
+            },
+            "output": {
+              "shouldCharge": "false",
+              "chargeAmount": "0",
+              "chargeReason": "\"AMB threshold maintained\"",
+              "ruleName": "\"THRESHOLD_MAINTAINED\""
+            }
+          },
+          {
+            "id": "rule-5",
+            "_description": "Rule 5: SAVINGS_SENIOR - First Month Violation",
+            "input": {
+              "accountType": "\"SAVINGS_SENIOR\"",
+              "accountStatus": "\"ACTIVE\"",
+              "amb": "< 10000",
+              "wasChargedLastMonth": "false",
+              "wasChargedThisMonth": "false"
+            },
+            "output": {
+              "shouldCharge": "true",
+              "chargeAmount": "0",
+              "chargeReason": "\"AMB below threshold (10000) - Senior citizen account, no charge\"",
+              "ruleName": "\"SAVINGS_SENIOR_VIOLATION_NO_CHARGE\""
+            }
+          },
+          {
+            "id": "rule-6",
+            "_description": "Rule 6: SAVINGS_SENIOR - Meets Threshold",
+            "input": {
+              "accountType": "\"SAVINGS_SENIOR\"",
+              "accountStatus": "\"ACTIVE\"",
+              "amb": ">= 10000",
+              "wasChargedLastMonth": "-",
+              "wasChargedThisMonth": "-"
+            },
+            "output": {
+              "shouldCharge": "false",
+              "chargeAmount": "0",
+              "chargeReason": "\"AMB threshold maintained\"",
+              "ruleName": "\"SENIOR_THRESHOLD_MAINTAINED\""
+            }
+          },
+          {
+            "id": "rule-7",
+            "_description": "Rule 7: CURRENT_ACCOUNT - Below Threshold",
+            "input": {
+              "accountType": "\"CURRENT_ACCOUNT\"",
+              "accountStatus": "\"ACTIVE\"",
+              "amb": "< 50000",
+              "wasChargedLastMonth": "false",
+              "wasChargedThisMonth": "false"
+            },
+            "output": {
+              "shouldCharge": "true",
+              "chargeAmount": "1000",
+              "chargeReason": "\"AMB below threshold (50000) for Current Account\"",
+              "ruleName": "\"CURRENT_ACCOUNT_VIOLATION\""
+            }
+          },
+          {
+            "id": "rule-8",
+            "_description": "Rule 8: CURRENT_ACCOUNT - Meets Threshold",
+            "input": {
+              "accountType": "\"CURRENT_ACCOUNT\"",
+              "accountStatus": "\"ACTIVE\"",
+              "amb": ">= 50000",
+              "wasChargedLastMonth": "-",
+              "wasChargedThisMonth": "-"
+            },
+            "output": {
+              "shouldCharge": "false",
+              "chargeAmount": "0",
+              "chargeReason": "\"AMB threshold maintained\"",
+              "ruleName": "\"CURRENT_THRESHOLD_MAINTAINED\""
+            }
+          },
+          {
+            "id": "rule-9",
+            "_description": "Rule 9: Inactive Account - No Charge",
+            "input": {
+              "accountType": "-",
+              "accountStatus": "!= \"ACTIVE\"",
+              "amb": "-",
+              "wasChargedLastMonth": "-",
+              "wasChargedThisMonth": "-"
+            },
+            "output": {
+              "shouldCharge": "false",
+              "chargeAmount": "0",
+              "chargeReason": "\"Account is not active\"",
+              "ruleName": "\"INACTIVE_ACCOUNT_NO_CHARGE\""
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "output-node-1",
+      "type": "outputNode",
+      "position": {
+        "x": 750,
+        "y": 150
+      },
+      "content": {
+        "fields": [
+          {
+            "field": "shouldCharge",
+            "name": "Should Charge",
+            "dataType": "boolean"
+          },
+          {
+            "field": "chargeAmount",
+            "name": "Charge Amount",
+            "dataType": "number"
+          },
+          {
+            "field": "chargeReason",
+            "name": "Reason",
+            "dataType": "string"
+          },
+          {
+            "field": "ruleName",
+            "name": "Rule Applied",
+            "dataType": "string"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-input-to-decision",
+      "sourceId": "input-node-1",
+      "targetId": "decision-table-1"
+    },
+    {
+      "id": "edge-decision-to-output",
+      "sourceId": "decision-table-1",
+      "targetId": "output-node-1"
+    }
+  ]
+}
