@@ -1,0 +1,132 @@
+{
+  "name": "Age and Salary Validation",
+  "contentType": "application/vnd.gorules.decision",
+  "nodes": [
+    {
+      "id": "input-1",
+      "name": "Input",
+      "type": "inputNode",
+      "position": {
+        "x": 50,
+        "y": 150
+      },
+      "content": {
+        "fields": [
+          {
+            "field": "age",
+            "name": "Age",
+            "dataType": "number"
+          },
+          {
+            "field": "salary",
+            "name": "Salary",
+            "dataType": "number"
+          }
+        ]
+      }
+    },
+    {
+      "id": "decision-table-1",
+      "name": "Age and Salary Validation",
+      "type": "decisionTableNode",
+      "position": {
+        "x": 400,
+        "y": 150
+      },
+      "content": {
+        "hitPolicy": "first",
+        "inputs": [
+          {
+            "id": "input-1",
+            "name": "Age",
+            "field": "age"
+          },
+          {
+            "id": "input-2",
+            "name": "Salary",
+            "field": "salary"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "output-1",
+            "name": "Message",
+            "field": "message"
+          },
+          {
+            "id": "output-2",
+            "name": "Status",
+            "field": "status"
+          }
+        ],
+        "rules": [
+          {
+            "_id": "rule-1",
+            "_description": "Rule 1: Age >= 20 AND Salary >= 10000 → Welcome",
+            "input-1": ">= 20",
+            "input-2": ">= 10000",
+            "output-1": "\"Welcome! You meet all criteria.\"",
+            "output-2": "\"APPROVED\""
+          },
+          {
+            "_id": "rule-2",
+            "_description": "Rule 2: Age < 20 AND Salary >= 10000 → Age less",
+            "input-1": "< 20",
+            "input-2": ">= 10000",
+            "output-1": "\"Age is less than 20. Minimum age requirement not met.\"",
+            "output-2": "\"AGE_TOO_LOW\""
+          },
+          {
+            "_id": "rule-3",
+            "_description": "Rule 3: Age >= 20 AND Salary < 10000 → Income less",
+            "input-1": ">= 20",
+            "input-2": "< 10000",
+            "output-1": "\"Income is less than 10000. Minimum salary requirement not met.\"",
+            "output-2": "\"SALARY_TOO_LOW\""
+          },
+          {
+            "_id": "rule-4",
+            "_description": "Rule 4: Age < 20 AND Salary < 10000 → Both less",
+            "input-1": "< 20",
+            "input-2": "< 10000",
+            "output-1": "\"Both age and income are below requirements.\"",
+            "output-2": "\"BOTH_TOO_LOW\""
+          }
+        ]
+      }
+    },
+    {
+      "id": "output-1",
+      "name": "Output",
+      "type": "outputNode",
+      "position": {
+        "x": 750,
+        "y": 150
+      },
+      "content": {
+        "fields": [
+          {
+            "field": "message",
+            "name": "Message"
+          },
+          {
+            "field": "status",
+            "name": "Status"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "sourceId": "input-1",
+      "targetId": "decision-table-1"
+    },
+    {
+      "id": "edge-2",
+      "sourceId": "decision-table-1",
+      "targetId": "output-1"
+    }
+  ]
+}
