@@ -1,0 +1,47 @@
+{
+  "checkDay": 25,
+  "accountId": "ACC001",
+  "accountName": "John Doe",
+  "currentMonth": "2025-11",
+  "ambDay1To25": 8000,
+  "ambDay1To30": 0,
+  "minBalance": 10000,
+  "wasActualDefaulterLastMonth": false,
+  "wasProbableDefaulterLastMonth": false,
+  "actualDefaulterMonth1": false,
+  "actualDefaulterMonth2": false,
+  "shortfallMonth1": 0,
+  "shortfallMonth2": 0
+}
+
+{
+  "checkDay": 3,
+  "accountId": "ACC001",
+  "accountName": "John Doe",
+  "currentMonth": "2025-12",
+  "ambDay1To25": 0,
+  "ambDay1To30": 8500,
+  "minBalance": 10000,
+  "wasActualDefaulterLastMonth": false,
+  "wasProbableDefaulterLastMonth": true,
+  "actualDefaulterMonth1": false,
+  "actualDefaulterMonth2": false,
+  "shortfallMonth1": 0,
+  "shortfallMonth2": 0
+}
+
+{
+  "checkDay": 3,
+  "accountId": "ACC001",
+  "accountName": "John Doe",
+  "currentMonth": "2025-12",
+  "ambDay1To25": 0,
+  "ambDay1To30": 8500,
+  "minBalance": 10000,
+  "wasActualDefaulterLastMonth": false,
+  "wasProbableDefaulterLastMonth": true,
+  "actualDefaulterMonth1": false,
+  "actualDefaulterMonth2": false,
+  "shortfallMonth1": 0,
+  "shortfallMonth2": 0
+}
