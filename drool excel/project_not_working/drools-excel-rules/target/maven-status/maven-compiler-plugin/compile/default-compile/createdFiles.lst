@@ -1,0 +1,4 @@
+com/example/drools/DroolsApplication.class
+com/example/drools/model/Person.class
+com/example/drools/model/ValidationResult.class
+com/example/drools/service/DroolsService.class
